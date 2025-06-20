@@ -15,12 +15,6 @@ class TodoBase(BaseModel):
     description: Optional[str] = None
     completed: bool = False
 
-class TodoCreate(TodoBase):
-    pass
-
-class TodoUpdate(TodoBase):
-    pass
-
 class TodoResponse(TodoBase):
     id: int
     
@@ -40,30 +34,43 @@ async def get_todos(db: Session = Depends(get_db)):
     todos = db.query(TodoModel).all()
     return todos
 
-# @app.get('/todos/{todo_id}')
-# async def get_todo(todo_id: int):
-#     for todo in todos:
-#         if todo['id'] == todo_id:
-#             return todo
-#     return {"error": "No Todo found"}
+@app.get('/todos/{todo_id}', response_model=TodoResponse)
+async def get_todo(todo_id: int, db: Session = Depends(get_db)):
+    todo = db.query(TodoModel).filter(TodoModel.id == todo_id).first()
+    return todo
 
-# @app.post('/todos')
-# async def create_todo(todo: TodoModel):
-#     todos.append(todo.dict()) # Append the todo to the list
-#     return todos[-1] # Return the last todo
+# Content-Type: application/json add this on header
+@app.post('/todos', response_model=TodoResponse)
+async def create_todo(todo: TodoBase, db: Session = Depends(get_db)):
+    new_todo = TodoModel(
+        title=todo.title,
+        description=todo.description,
+        completed=todo.completed
+    )
+    db.add(new_todo)
+    db.commit()
+    db.refresh(new_todo)
+    return new_todo
 
-# @app.delete('/todos/{todo_id}')
-# async def delete_todo(todo_id: int):
-#     for todo in todos:
-#         if todo['id'] == todo_id:
-#             todos.remove(todo)
-#             return {"message": "Deleted Todo successfully"}
-#     return {"error": "Todo not found"}
 
-# @app.put('/todos/{todo_id}')
-# async def update_todo(todo_id: int, newTodo: Todo):
-#     for index, todo in enumerate(todos):
-#         if todo['id'] == todo_id:
-#             todos[index] = newTodo.dict()
-#             return {"message": "Todo updated successfully", "todo": todos[index]}
-#     return {"error": "Todo not found"}
+@app.delete('/todos/{todo_id}', response_model=TodoResponse)
+async def delete_todo(todo_id: int, db: Session = Depends(get_db)):
+    todo = db.query(TodoModel).filter(TodoModel.id == todo_id).first()
+    db.delete(todo)
+    db.commit()
+    return todo
+
+@app.put('/todos/{todo_id}', response_model=TodoResponse)
+async def update_todo(todo_id: int, updated_todo: TodoBase, db: Session = Depends(get_db)):
+    todo = db.query(TodoModel).filter(TodoModel.id == todo_id).first()
+    if not todo:
+        return {"error": "Todo not found"}
+
+    todo.title = updated_todo.title
+    todo.description = updated_todo.description
+    todo.completed = updated_todo.completed
+
+    db.commit()
+    db.refresh(todo)
+    return todo
+
