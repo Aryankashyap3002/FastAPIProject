@@ -1,50 +1,45 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI() # create instance of FastAPI
 
-class Custom(BaseModel):
-    name: str
-    age: int
+todos = [] # Create a empty list to store todos, in memory db
 
-# The app instance is the main omponent of FastApI application. It is used to configure the application.
+class Todo(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    completed: bool = False
 
-# /ping is path of the end point.
+@app.get('/todos')
+async def get_todos():
+    return todos
 
-# @app.get() is a decorator is used to define an endpoint. 
-@app.get('/ping')
-async def root():
-    return {'message': 'Hello World'}
+@app.get('/todos/{todo_id}')
+async def get_todo(todo_id: int):
+    for todo in todos:
+        if todo['id'] == todo_id:
+            return todo
+    return {"error": "No Todo found"}
 
-# In FastAPI, serialization is the process of converting Python objects (like Pydantic models) into JSON-compatible data types to send as HTTP responses.
-# This is usually handled automatically by FastAPI using Pydantic.
-# Here {'message': 'Hello World'} is python Dictionary but it is converted into json.
+@app.post('/todos')
+async def create_todo(todo: Todo):
+    todos.append(todo.dict()) # Append the todo to the list
+    return todos[-1] # Return the last todo
 
-# @app.get('/blogs/{blog_id}')
-# async def read_blog(blog_id : int):
-#     return {"blog_id": blog_id}
+@app.delete('/todos/{todo_id}')
+async def delete_todo(todo_id: int):
+    for todo in todos:
+        if todo['id'] == todo_id:
+            todos.remove(todo)
+            return {"message": "Deleted Todo successfully"}
+    return {"error": "Todo not found"}
 
-# @app.get('/blogs/comments') 
-# async def read_comment():
-#     return {"comment": "No comment"}
-# The error occurs because /blogs/comments matches the path /blogs/{blog_id} first, trying to parse "comments" as an integer.
-
-@app.get('/blogs/comments')
-async def read_comment():
-    return {"comment": "No comment"}
-
-# query params q
-@app.get('/blogs/{blog_id}')
-async def read_blog(blog_id : int, q: str = None):
-    print(q)
-    return {"blog_id": blog_id}
-
-# in body raw section give {
-#     "name": "Aryan Kashyap",
-#     "age": 21
-# } and in header section give Content-Type: application/json
-@app.post('/blogs/{blog_id}')
-async def create_blog(blog_id : int, request_body: Custom, q: str = None):
-    print(request_body)
-    print(q)
-    return {"blog_id": blog_id}
+@app.put('/todos/{todo_id}')
+async def update_todo(todo_id: int, newTodo: Todo):
+    for index, todo in enumerate(todos):
+        if todo['id'] == todo_id:
+            todos[index] = newTodo.dict()
+            return {"message": "Todo updated successfully", "todo": todos[index]}
+    return {"error": "Todo not found"}
