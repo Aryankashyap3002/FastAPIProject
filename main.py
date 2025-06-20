@@ -4,8 +4,6 @@ from typing import Optional
 
 app = FastAPI() # create instance of FastAPI
 
-from dotenv import load_dotenv
-load_dotenv()
 
 todos = [] # Create a empty list to store todos, in memory db
 
